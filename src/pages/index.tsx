@@ -1,50 +1,27 @@
 import Head from "next/head";
 import Link from "next/link";
-import type { NextPage } from "next/types";
+import type { GetStaticPropsContext, NextPage } from "next/types";
 import React, { useState } from "react";
 import Card from "~/components/Card";
-import type { CardProps } from "~/components/Card/Card.types";
+
+import { api } from "~/utils/api";
+import type { Word } from "@prisma/client";
 
 const Home: NextPage = () => {
   const [text, setText] = useState("");
-  const cards: CardProps[] = [
-    {
-      id: 1,
-      tr: "kalem",
-      en: "pencil",
-    },
-    {
-      id: 2,
 
-      tr: "defter",
-      en: "notebook",
+  const [words, setWords] = useState<Word[]>([]);
+
+  const myquery = api.word.getWordsInfinite.useInfiniteQuery(
+    {
+      limit: 10,
     },
     {
-      id: 3,
-      tr: "silgi",
-      en: "eraser",
-    },
-    {
-      id: 4,
-      tr: "kitap",
-      en: "book",
-    },
-    {
-      id: 5,
-      tr: "kalemlik",
-      en: "pencil case",
-    },
-    {
-      id: 6,
-      tr: "kalemlik",
-      en: "pencil case",
-    },
-    {
-      id: 7,
-      tr: "kalemlik",
-      en: "pencil case",
-    },
-  ];
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    }
+  );
+
+  const { data, error, fetchNextPage, isFetchingNextPage } = myquery;
 
   return (
     <>
@@ -75,19 +52,21 @@ const Home: NextPage = () => {
           <Link
             type="button"
             className="flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 pb-1 text-white"
-            href={"add"}
+            href={"word"}
           >
             <h1 className="text-2xl ">+</h1>
           </Link>
         </div>
 
         <section className="grid grid-cols-5 gap-4 md:gap-8">
-          {
-            // translated card element
-            cards.map((card: CardProps) => (
-              <Card key={card.id} id={card.id} tr={card.tr} en={card.en} />
-            ))
-          }
+          {error ? <h1>error</h1> : null}
+          {data
+            ? data.pages.map((page) => {
+                return page.items.map((item) => {
+                  return <Card key={item.id} {...item} />;
+                });
+              })
+            : "Loading..."}
         </section>
       </>
     </>

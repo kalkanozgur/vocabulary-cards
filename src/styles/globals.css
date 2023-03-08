@@ -11,7 +11,7 @@
   }
   /* from-[#2e026d] to-[#9a9ddb] */
   .inline-button {
-    @apply rounded bg-gradient-to-b from-[#2e026d] to-[#424582] py-2 px-4 font-bold text-white hover:opacity-50;
+    @apply rounded bg-gradient-to-b from-[#2e026d] to-[#424582] py-2 px-4 font-bold text-white;
   }
 }
 
