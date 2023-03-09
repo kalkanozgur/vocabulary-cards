@@ -14,10 +14,11 @@ import { appRouter } from "~/server/api/root";
 
 import { createInnerTRPCContext } from "~/server/api/trpc";
 import superjson from "superjson";
-let renderCount = 0;
+import { useRouter } from "next/router";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
+
   if (!session) {
     return {
       redirect: {
@@ -26,14 +27,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       },
     };
   }
-  if (!context.query.data) {
+  if (!context.query.id) {
     return {
       props: {
         session,
       },
     };
   }
-  console.log("context.query.data: ", context.query.data);
 
   const ssg = createProxySSGHelpers({
     router: appRouter,
@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     }),
     transformer: superjson,
   });
-  await ssg.word.getWordByIdProcedure.fetch(context.query.data as string);
+  await ssg.word.getWordByIdProcedure.fetch(context.query.id as string);
 
   return {
     props: { trpcState: ssg.dehydrate() },
@@ -52,27 +52,42 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 export default function WordPage(
   props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) {
-  renderCount++;
-  console.log("renderCount: ", renderCount);
-  console.log("props: ", props);
+  let kelime: Word;
+  if (props.trpcState) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    kelime = props.trpcState.json.queries[0].state.data;
+  }
+
+  const router = useRouter();
+  const { text } = router.query;
 
   const { data: sessionData } = useSession();
 
-  const [input1, setInput1] = useState("table");
-  const [input2, setInput2] = useState("masa");
+  const [input1, setInput1] = useState(() => {
+    if (text) return text as string;
+    if (kelime) return kelime.word;
+    return "";
+  });
+  const [input2, setInput2] = useState(() => {
+    if (kelime) return kelime.meanings[0]?.meaning as string;
+    return "";
+  });
   const [language, setLanguage] = useState("en");
-  const [word, setWord] = useState({
-    word: input1,
-    from: "en",
-    to: "tr",
-    userId: sessionData?.user.id,
-    meanings: [
-      {
-        userId: sessionData?.user.id,
-        meaning: input2,
-      } as Meaning,
-    ],
-  } as Word);
+  const [word, setWord] = useState(() => {
+    if (kelime) return kelime;
+    return {
+      word: input1,
+      from: "en",
+      to: "tr",
+      userId: sessionData?.user.id,
+      meanings: [
+        {
+          userId: sessionData?.user.id,
+          meaning: input2,
+        } as Meaning,
+      ],
+    } as Word;
+  });
 
   const saveWord = api.word.saveWordProcedure.useMutation({
     onSuccess: (data) => {
@@ -119,9 +134,7 @@ export default function WordPage(
           type="submit"
           onClick={(e) => {
             e.preventDefault();
-
             console.log(word);
-
             try {
               saveWord.mutate(word);
             } catch (error) {

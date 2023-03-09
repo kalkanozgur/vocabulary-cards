@@ -61,34 +61,65 @@ export async function saveWord({
   input: Word;
   session: Session;
 }) {
-  const { word, from, to, meanings, examples } = input;
-  // const { id: userId } = ctx.session.user;
-  const userId = "";
-  const save = await prisma.word.create({
-    include: {
-      meanings: true,
-      examples: true,
-    },
-    data: {
-      word,
-      from,
-      to,
-      userId,
-      meanings: {
-        create: meanings.map((meaning) => ({
-          meaning: meaning.meaning,
-          userId,
-        })),
+  const { id, word, from, to, meanings, examples } = input;
+  const { id: userId } = session.user;
+  console.log("id", id);
+  if (!id) {
+    return await prisma.word.create({
+      include: {
+        meanings: true,
+        examples: true,
       },
-      examples: {
-        create: examples?.map((example) => ({
-          example: example.example,
-          userId,
-        })),
+      data: {
+        word,
+        from,
+        to,
+        userId,
+        meanings: {
+          create: meanings.map((meaning) => ({
+            meaning: meaning.meaning,
+            userId,
+          })),
+        },
+        examples: {
+          create: examples?.map((example) => ({
+            example: example.example,
+            userId,
+          })),
+        },
       },
-    },
-  });
-  return save;
+    });
+  }
+  if (id) {
+    console.log("id is defined so its update");
+    return await prisma.word.update({
+      where: {
+        id,
+      },
+      include: {
+        meanings: true,
+        examples: true,
+      },
+      data: {
+        word,
+        from,
+        to,
+        userId,
+        meanings: {
+          create: meanings.map((meaning) => ({
+            meaning: meaning.meaning,
+            userId,
+          })),
+        },
+        examples: {
+          create: examples?.map((example) => ({
+            example: example.example,
+            userId,
+          })),
+        },
+      },
+    });
+  }
 }
 
 export async function editWord({
@@ -101,7 +132,7 @@ export async function editWord({
   session: Session;
 }) {
   const { id, word, from, to, meanings, examples } = input;
-  const userId = "";
+  const { id: userId } = session.user;
   const edit = await prisma.word.update({
     where: {
       id,
@@ -130,4 +161,76 @@ export async function editWord({
     },
   });
   return edit;
+}
+
+export async function saveWWord({
+  prisma,
+  input,
+  session,
+}: {
+  prisma: PrismaClient;
+  input: Word;
+  session: Session;
+}) {
+  const { id, word, from, to, meanings, examples } = input;
+  const { id: userId } = session.user;
+  console.log("id", id);
+  if (id) {
+    console.log("id is defined so its update");
+    return await prisma.word.update({
+      where: {
+        id,
+      },
+      include: {
+        meanings: true,
+        examples: true,
+      },
+      data: {
+        word,
+        from,
+        to,
+        userId,
+        meanings: {
+          create: meanings.map((meaning) => ({
+            meaning: meaning.meaning,
+            userId,
+          })),
+        },
+        examples: {
+          create: examples?.map((example) => ({
+            example: example.example,
+            userId,
+          })),
+        },
+      },
+    });
+  }
+
+  if (!id) {
+    console.log("id is not defined so its create");
+    return await prisma.word.create({
+      include: {
+        meanings: true,
+        examples: true,
+      },
+      data: {
+        word,
+        from,
+        to,
+        userId,
+        meanings: {
+          create: meanings.map((meaning) => ({
+            meaning: meaning.meaning,
+            userId,
+          })),
+        },
+        examples: {
+          create: examples?.map((example) => ({
+            example: example.example,
+            userId,
+          })),
+        },
+      },
+    });
+  }
 }

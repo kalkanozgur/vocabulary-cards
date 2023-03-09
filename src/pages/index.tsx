@@ -23,7 +23,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     transformer: superjson,
   });
   await ssg.word.getInfiniteWordsProcedure.fetchInfinite({
-    limit: 10,
+    limit: 50,
   });
 
   return {
@@ -36,7 +36,6 @@ export default function Home(
 ) {
   const [text, setText] = useState("");
 
-  console.log("props: ", props);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
   const { error } = props.trpcState.json.queries[0].state;
 
@@ -74,7 +73,10 @@ export default function Home(
           <Link
             type="button"
             className="flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 pb-1 text-white"
-            href={"word"}
+            href={{
+              pathname: "/word",
+              query: text ? { text: text } : {},
+            }}
           >
             <h1 className="text-2xl ">+</h1>
           </Link>

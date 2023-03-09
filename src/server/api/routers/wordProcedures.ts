@@ -29,5 +29,6 @@ export const saveWordProcedure = protectedProcedure
 export const editWordProcedure = protectedProcedure
   .input(wordSchema)
   .mutation(async ({ input, ctx }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await editWord({ prisma: ctx.prisma, input, session: ctx.session });
   });
