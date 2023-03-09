@@ -1,27 +1,49 @@
+import { createProxySSGHelpers } from "@trpc/react-query/ssg";
+import { getSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
-import type { GetStaticPropsContext, NextPage } from "next/types";
+import type {
+  GetServerSideProps,
+  InferGetServerSidePropsType,
+} from "next/types";
 import React, { useState } from "react";
 import Card from "~/components/Card";
+import { appRouter } from "~/server/api/root";
+import type { Word } from "~/server/api/routers/wordSchema";
+import { createInnerTRPCContext } from "~/server/api/trpc";
+import superjson from "superjson";
 
-import { api } from "~/utils/api";
-import type { Word } from "@prisma/client";
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context);
+  const ssg = createProxySSGHelpers({
+    router: appRouter,
+    ctx: createInnerTRPCContext({
+      session: session,
+    }),
+    transformer: superjson,
+  });
+  await ssg.word.getInfiniteWordsProcedure.fetchInfinite({
+    limit: 10,
+  });
 
-const Home: NextPage = () => {
+  return {
+    props: { trpcState: ssg.dehydrate() },
+  };
+};
+
+export default function Home(
+  props: InferGetServerSidePropsType<typeof getServerSideProps>
+) {
   const [text, setText] = useState("");
 
-  const [words, setWords] = useState<Word[]>([]);
+  console.log("props: ", props);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+  const { error } = props.trpcState.json.queries[0].state;
 
-  const myquery = api.word.getWordsInfinite.useInfiniteQuery(
-    {
-      limit: 10,
-    },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-    }
-  );
-
-  const { data, error, fetchNextPage, isFetchingNextPage } = myquery;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const items: Word[] =
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    props.trpcState.json.queries[0].state.data.pages[0].items;
 
   return (
     <>
@@ -59,18 +81,14 @@ const Home: NextPage = () => {
         </div>
 
         <section className="grid grid-cols-5 gap-4 md:gap-8">
-          {error ? <h1>error</h1> : null}
-          {data
-            ? data.pages.map((page) => {
-                return page.items.map((item) => {
-                  return <Card key={item.id} {...item} />;
-                });
+          {error ? <h1>{JSON.stringify(error)}</h1> : null}
+          {items
+            ? items.map((item) => {
+                return <Card key={item.id} {...item} />;
               })
             : "Loading..."}
         </section>
       </>
     </>
   );
-};
-
-export default Home;
+}

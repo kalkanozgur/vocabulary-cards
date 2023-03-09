@@ -1,25 +1,66 @@
-import { useSession } from "next-auth/react";
-import type { NextPage } from "next/types";
+import { getSession, useSession } from "next-auth/react";
+import type {
+  GetServerSideProps,
+  InferGetServerSidePropsType,
+} from "next/types";
 import { useState } from "react";
 import Card from "~/components/Card/Card";
 import { WordInput, WordInputwithRich } from "~/components/Word/WordInput";
 
-import type { Meaning, Word } from "~/server/api/routers/word";
 import { api } from "~/utils/api";
+import { createProxySSGHelpers } from "@trpc/react-query/ssg";
+import type { Meaning, Word } from "~/server/api/routers/wordSchema";
+import { appRouter } from "~/server/api/root";
 
-import { useRouter } from "next/router";
+import { createInnerTRPCContext } from "~/server/api/trpc";
+import superjson from "superjson";
 let renderCount = 0;
 
-const WordPage: NextPage = () => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context);
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/signin",
+        permanent: false,
+      },
+    };
+  }
+  if (!context.query.data) {
+    return {
+      props: {
+        session,
+      },
+    };
+  }
+  console.log("context.query.data: ", context.query.data);
+
+  const ssg = createProxySSGHelpers({
+    router: appRouter,
+    ctx: createInnerTRPCContext({
+      session: session,
+    }),
+    transformer: superjson,
+  });
+  await ssg.word.getWordByIdProcedure.fetch(context.query.data as string);
+
+  return {
+    props: { trpcState: ssg.dehydrate() },
+  };
+};
+
+export default function WordPage(
+  props: InferGetServerSidePropsType<typeof getServerSideProps>
+) {
   renderCount++;
   console.log("renderCount: ", renderCount);
+  console.log("props: ", props);
+
   const { data: sessionData } = useSession();
-  const router = useRouter();
 
   const [input1, setInput1] = useState("table");
   const [input2, setInput2] = useState("masa");
   const [language, setLanguage] = useState("en");
-  // const [mean, setMean] = useState({} as Meaning);
   const [word, setWord] = useState({
     word: input1,
     from: "en",
@@ -33,17 +74,7 @@ const WordPage: NextPage = () => {
     ],
   } as Word);
 
-  if (router.query.data) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const data: Word = JSON.parse(router.query.data as string);
-    console.log("router.query has data: ", data);
-    // setInput1(data.word);
-    // data.meanings && setInput2(data.meanings[0].meaning);
-  } else {
-    console.log("router.query has no data");
-  }
-
-  const saveWord = api.word.saveWord.useMutation({
+  const saveWord = api.word.saveWordProcedure.useMutation({
     onSuccess: (data) => {
       console.log(data);
       alert(`onSuccess: ${JSON.stringify(data)}`);
@@ -105,16 +136,13 @@ const WordPage: NextPage = () => {
         word={word.word}
         from={word.from}
         to={word.to}
-        userId=""
+        userId={word.userId}
         meanings={word.meanings.map((meaning) => {
           return {
             meaning: meaning.meaning,
-            userId: meaning.userId,
           };
         })}
       />
     </>
   );
-};
-
-export default WordPage;
+}

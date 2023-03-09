@@ -1,5 +1,5 @@
 import { createTRPCRouter } from "~/server/api/trpc";
-import { wordsRouter } from "./routers/word";
+import { wordsRouter } from "./routers/_word";
 
 /**
  * This is the primary router for your server.
