@@ -1,4 +1,4 @@
-import { getSession, useSession } from "next-auth/react";
+import { getSession, signIn, useSession } from "next-auth/react";
 import type {
   GetServerSideProps,
   InferGetServerSidePropsType,
@@ -90,18 +90,18 @@ export default function WordPage(
   });
 
   const saveWord = api.word.saveWordProcedure.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log(data);
-      alert(`onSuccess: ${JSON.stringify(data)}`);
+      await router.push("/");
     },
-    onError: (error) => {
-      console.log(error);
-      alert(error);
-    },
-    onMutate: (word: Word) => {
-      console.log(word);
-
-      alert(`onMutate: ${JSON.stringify(word)}`);
+    onError: async (error) => {
+      console.log("error", error);
+      // import { signIn, signOut, useSession } from "next-auth/react";
+      //when error is TRPCClientError: UNAUTHORIZED
+      //redirect to login page
+      if (error.message === "UNAUTHORIZED") {
+        await signIn();
+      }
     },
   });
 

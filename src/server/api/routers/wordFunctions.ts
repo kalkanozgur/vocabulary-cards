@@ -63,6 +63,14 @@ export async function saveWord({
 }) {
   const { id, word, from, to, meanings, examples } = input;
   const { id: userId } = session.user;
+  if (!userId) {
+    return {
+      redirect: {
+        destination: "/auth/signin",
+        permanent: false,
+      },
+    };
+  }
   console.log("id", id);
   if (!id) {
     return await prisma.word.create({

@@ -31,15 +31,6 @@ const Card: React.FC<Word> = (props: Word) => {
       >
         <div className="relative flex h-full w-full flex-col">
           <>
-            <Link
-              href={{
-                pathname: "/word",
-                query: { id: props.id },
-              }}
-              className="p-2"
-            >
-              <GrConfigure className="text-slate-300 duration-200 hover:scale-125" />
-            </Link>
             {isFlipped ? (
               <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
                 {props.meanings.map((meaning) => (
@@ -52,7 +43,7 @@ const Card: React.FC<Word> = (props: Word) => {
                 ))}
               </div>
             ) : (
-            <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
+              <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
                 <h1 className="relative text-2xl font-bold text-white ">
                   {props.word}
                 </h1>
