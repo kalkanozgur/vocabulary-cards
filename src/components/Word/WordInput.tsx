@@ -99,7 +99,7 @@ export const WordInput: React.FC<WordInputProps> = ({
       <div className="relative flex w-full flex-col justify-center">
         <input
           type="text"
-          className=" w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+          className="form-input"
           placeholder={placeHolder ? placeHolder : "Enter words mean"}
           value={value}
           onChange={(e) => {

@@ -4,7 +4,6 @@ import type {
   InferGetServerSidePropsType,
 } from "next/types";
 import { useState } from "react";
-import Card from "~/components/Card/Card";
 import { WordInput, WordInputwithRich } from "~/components/Word/WordInput";
 
 import { api } from "~/utils/api";
@@ -19,14 +18,6 @@ import { useRouter } from "next/router";
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
 
-  // if (!session) {
-  //   return {
-  //     redirect: {
-  //       destination: "/auth/signin",
-  //       permanent: false,
-  //     },
-  //   };
-  // }
   if (!context.query.id) {
     return {
       props: {
@@ -73,6 +64,15 @@ export default function WordPage(
     return "";
   });
   const [language, setLanguage] = useState("en");
+  const [meanings, setMeanings] = useState<Meaning[]>(() => {
+    if (kelime) return kelime.meanings;
+    return [
+      {
+        userId: sessionData?.user.id,
+        meaning: input2,
+      } as Meaning,
+    ];
+  });
   const [word, setWord] = useState(() => {
     if (kelime) return kelime;
     return {
@@ -80,12 +80,7 @@ export default function WordPage(
       from: "en",
       to: "tr",
       userId: sessionData?.user.id,
-      meanings: [
-        {
-          userId: sessionData?.user.id,
-          meaning: input2,
-        } as Meaning,
-      ],
+      meanings: meanings,
     } as Word;
   });
 
@@ -96,9 +91,6 @@ export default function WordPage(
     },
     onError: async (error) => {
       console.log("error", error);
-      // import { signIn, signOut, useSession } from "next-auth/react";
-      //when error is TRPCClientError: UNAUTHORIZED
-      //redirect to login page
       if (error.message === "UNAUTHORIZED") {
         await signIn();
       }
@@ -120,21 +112,64 @@ export default function WordPage(
             setWord({ ...word, word: value });
           }}
         />
-        <WordInput
-          value={input2}
-          setValue={(input2) => {
-            setInput2(input2);
-          }}
-          onChange={(value) => {
-            setWord({ ...word, meanings: [{ meaning: value }] });
-          }}
-        />
+
+        {meanings.map((meaning, index) => (
+          <div key={index} className="relative">
+            <input
+              className=" relative mt-4 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+              key={index}
+              value={meaning.meaning}
+              onChange={(e) => {
+                setMeanings(
+                  meanings.map((item, i) => {
+                    if (i === index) {
+                      return { ...item, meaning: e.target.value };
+                    }
+                    return item;
+                  })
+                );
+              }}
+              onBlur={() => {
+                setWord({
+                  ...word,
+                  meanings: meanings,
+                });
+              }}
+            />
+            <div className="absolute top-0 right-0 flex flex-row">
+              <button
+                className="rounded bg-[#2e026d]/90 py-2 px-4 font-bold text-white duration-300 hover:bg-[#9a9ddb]/10"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMeanings(meanings.filter((item, i) => i !== index));
+                }}
+              >
+                X
+              </button>
+              <button
+                className="rounded bg-[#2e026d]/90 py-2 px-4 font-bold text-white duration-300 hover:bg-[#9a9ddb]/10"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMeanings([
+                    ...meanings,
+                    {
+                      userId: sessionData?.user.id,
+                      meaning: "",
+                    } as Meaning,
+                  ]);
+                }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        ))}
+
         <button
-          className="my-2 rounded-md border border-gray-300 bg-slate-600 p-2 text-black"
+          className=" mt-4 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
           type="submit"
           onClick={(e) => {
             e.preventDefault();
-            console.log(word);
             try {
               saveWord.mutate(word);
             } catch (error) {
@@ -145,17 +180,25 @@ export default function WordPage(
           Submit
         </button>
       </form>
-      <Card
-        word={word.word}
-        from={word.from}
-        to={word.to}
-        userId={word.userId}
-        meanings={word.meanings.map((meaning) => {
-          return {
-            meaning: meaning.meaning,
-          };
-        })}
-      />
+      {saveWord.isLoading && <div>loading</div>}
+      <WordShowCase word={word} />
     </>
   );
 }
+
+const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
+  return (
+    <div className="flex w-7/12 flex-col">
+      <div className="flex flex-row">
+        Word: {word.word} - {word.from} - {word.to}
+      </div>
+      <div className="flex flex-col">
+        {word.meanings.map((meaning) => (
+          <div key={meaning.id} className="flex flex-col">
+            {meaning.meaning}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

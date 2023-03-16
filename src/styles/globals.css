@@ -11,7 +11,10 @@
   }
   /* from-[#2e026d] to-[#9a9ddb] */
   .inline-button {
-    @apply rounded bg-gradient-to-b from-[#2e026d] to-[#424582] py-2 px-4 font-bold text-white;
+    @apply rounded bg-gradient-to-b from-brand1 to-brand2 py-2 px-4 font-bold text-white;
+  }
+  .form-input {
+    @apply mt-4 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100;
   }
 }
 

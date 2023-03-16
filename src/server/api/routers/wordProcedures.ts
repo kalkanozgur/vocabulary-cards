@@ -7,6 +7,7 @@ import {
   getWordById,
   saveWord,
 } from "./wordFunctions";
+import { addMeaningtoWord } from "./meaningFunctions";
 
 export const getWordByIdProcedure = publicProcedure
   .input(z.string())
@@ -31,4 +32,17 @@ export const editWordProcedure = protectedProcedure
   .mutation(async ({ input, ctx }) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await editWord({ prisma: ctx.prisma, input, session: ctx.session });
+  });
+
+export const addMeaningtoWordProcedure = protectedProcedure
+  .input(
+    z.object({
+      wordId: z.string(),
+      id: z.string(),
+      meaning: z.string(),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    await addMeaningtoWord({ prisma: ctx.prisma, input, session: ctx.session });
   });
