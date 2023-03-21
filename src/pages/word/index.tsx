@@ -4,7 +4,7 @@ import type {
   InferGetServerSidePropsType,
 } from "next/types";
 import { useState } from "react";
-import { WordInput, WordInputwithRich } from "~/components/Word/WordInput";
+import { WordInputwithRich } from "~/components/Word/WordInput";
 
 import { api } from "~/utils/api";
 import { createProxySSGHelpers } from "@trpc/react-query/ssg";
@@ -14,6 +14,11 @@ import { appRouter } from "~/server/api/root";
 import { createInnerTRPCContext } from "~/server/api/trpc";
 import superjson from "superjson";
 import { useRouter } from "next/router";
+import toast from "react-hot-toast";
+import {
+  Recommendations,
+  translateWithDictionaryapi,
+} from "~/server/api/routers/recommended";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
@@ -47,6 +52,7 @@ export default function WordPage(
   if (props.trpcState) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     kelime = props.trpcState.json.queries[0].state.data;
+    console.log("kelime", kelime);
   }
 
   const router = useRouter();
@@ -59,17 +65,19 @@ export default function WordPage(
     if (kelime) return kelime.word;
     return "";
   });
-  const [input2, setInput2] = useState(() => {
-    if (kelime) return kelime.meanings[0]?.meaning as string;
-    return "";
-  });
-  const [language, setLanguage] = useState("en");
+
+  const [recommended, setRecommended] = useState<Recommendations[]>();
+  // const [input2, setInput2] = useState(() => {
+  //   if (kelime) return kelime.meanings[0]?.meaning as string;
+  //   return "";
+  // });
   const [meanings, setMeanings] = useState<Meaning[]>(() => {
-    if (kelime) return kelime.meanings;
+    if (kelime?.meanings) return kelime.meanings;
     return [
       {
         userId: sessionData?.user.id,
-        meaning: input2,
+        meaning: "",
+        wordId: "",
       } as Meaning,
     ];
   });
@@ -77,126 +85,259 @@ export default function WordPage(
     if (kelime) return kelime;
     return {
       word: input1,
-      from: "en",
-      to: "tr",
       userId: sessionData?.user.id,
       meanings: meanings,
     } as Word;
   });
 
+  const blurForm = () => {
+    setWord({
+      ...word,
+      meanings: meanings,
+    });
+    recommendWord(word.word).catch((e) => {
+      toast.error("Kelime önerilemedi");
+      console.log(e);
+    });
+  };
+
   const saveWord = api.word.saveWordProcedure.useMutation({
-    onSuccess: async (data) => {
-      console.log(data);
+    onSuccess: async () => {
+      toast.dismiss();
+      toast.success("Kelime kaydedildi");
       await router.push("/");
     },
     onError: async (error) => {
-      console.log("error", error);
+      toast.dismiss();
+      toast.error("Kelime kaydedilemedi");
       if (error.message === "UNAUTHORIZED") {
         await signIn();
       }
     },
   });
 
+  const deleteWord = api.word.deleteWordProcedure.useMutation({
+    onSuccess: async () => {
+      toast.dismiss();
+      toast.success("Kelime silindi");
+      await router.push("/");
+    },
+    onError: async (error) => {
+      toast.dismiss();
+      toast.error("Kelime silinemedi");
+      if (error.message === "UNAUTHORIZED") {
+        await signIn();
+      }
+    },
+  });
+
+  const recommendWord = async (input: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const res = await translateWithDictionaryapi({ word: input });
+    setRecommended(res);
+  };
+
+  saveWord.isLoading && toast.loading("Kelime kaydediliyor");
+  deleteWord.isLoading && toast.loading("Kelime siliniyor");
+
   return (
     <>
-      <form className="flex w-7/12 flex-col">
+      <form className="flex w-7/12 flex-col" onBlur={blurForm}>
         <WordInputwithRich
           value={input1}
           setValue={setInput1}
-          language={language}
-          setLanguage={setLanguage}
           onRecord={() => {
             console.log("record");
           }}
           onChange={(value) => {
             setWord({ ...word, word: value });
           }}
+          onBlur={() => {
+            recommendWord(word.word).catch((e) => {
+              toast.error("Kelime önerilemedi");
+              console.log(e);
+            });
+          }}
         />
 
-        {meanings.map((meaning, index) => (
-          <div key={index} className="relative">
-            <input
-              className=" relative mt-4 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
-              key={index}
-              value={meaning.meaning}
-              onChange={(e) => {
-                setMeanings(
-                  meanings.map((item, i) => {
-                    if (i === index) {
-                      return { ...item, meaning: e.target.value };
+        {/* Meanings */}
+        <div className="flex flex-col space-y-2">
+          {meanings.map((meaning, index) => (
+            <div key={index} className="relative flex">
+              <input
+                key={index}
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+                type="text"
+                placeholder="Enter words meaning"
+                value={meaning.meaning}
+                onChange={(e) => {
+                  setMeanings(
+                    meanings.map((item, i) => {
+                      if (i === index) {
+                        return { ...item, meaning: e.target.value };
+                      }
+                      return item;
+                    })
+                  );
+                }}
+              />
+              {(meanings.length > 1 || meaning.meaning) && (
+                <button
+                  className="absolute right-0 top-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (meaning.meaning) {
+                      setMeanings(
+                        meanings.map((item, i) => {
+                          if (i === index) {
+                            return { ...item, meaning: "" };
+                          }
+                          return item;
+                        })
+                      );
                     }
-                    return item;
-                  })
-                );
-              }}
-              onBlur={() => {
-                setWord({
-                  ...word,
-                  meanings: meanings,
-                });
-              }}
-            />
-            <div className="absolute top-0 right-0 flex flex-row">
-              <button
-                className="rounded bg-[#2e026d]/90 py-2 px-4 font-bold text-white duration-300 hover:bg-[#9a9ddb]/10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMeanings(meanings.filter((item, i) => i !== index));
-                }}
-              >
-                X
-              </button>
-              <button
-                className="rounded bg-[#2e026d]/90 py-2 px-4 font-bold text-white duration-300 hover:bg-[#9a9ddb]/10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMeanings([
-                    ...meanings,
-                    {
-                      userId: sessionData?.user.id,
-                      meaning: "",
-                    } as Meaning,
-                  ]);
-                }}
-              >
-                +
-              </button>
+                    if (meanings.length > 1 && !meaning.meaning) {
+                      setMeanings(meanings.filter((item, i) => i !== index));
+                      blurForm();
+                    }
+                  }}
+                >
+                  X
+                </button>
+              )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
+        {/*
+        {/* Add Meaning */}
         <button
-          className=" mt-4 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+          className=" mt-4 w-3/12 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+          type="button"
+          onClick={() => {
+            setMeanings([
+              ...meanings,
+              {
+                userId: sessionData?.user.id,
+                meaning: "",
+                wordId: "",
+              } as Meaning,
+            ]);
+          }}
+        >
+          Add Meaning
+        </button>
+      </form>
+
+      {/* Save Word Button */}
+      <button
+        className=" mt-4 w-5/12 rounded-md border border-teal-800 bg-teal-500 px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+        type="submit"
+        onClick={(e) => {
+          e.preventDefault();
+          saveWord.mutate(word);
+        }}
+      >
+        Submit
+      </button>
+
+      {recommended && (
+        <div className="flex flex-row space-x-2">
+          <RecommendationsShowCase recommended={recommended} />
+        </div>
+      )}
+
+      {/* Delete Word Button */}
+      {word.id && (
+        <button
+          // delete Word Button with tailwindcss absolute possition on top right
+          className="absolute right-0 bottom-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
           type="submit"
           onClick={(e) => {
             e.preventDefault();
-            try {
-              saveWord.mutate(word);
-            } catch (error) {
-              alert(error);
-            }
+            deleteWord.mutate(word.id as string);
           }}
         >
-          Submit
+          Delete
         </button>
-      </form>
-      {saveWord.isLoading && <div>loading</div>}
-      <WordShowCase word={word} />
+      )}
+
+      {/* Showcase */}
+      {word && meanings && sessionData && (
+        <div className="flex flex-row space-x-2">
+          <WordShowCase word={word} />
+          <MeaningsShowCase meanings={meanings} />
+        </div>
+      )}
     </>
   );
 }
 
+const RecommendationsShowCase: React.FC<{ recommended: Recommendations[] }> = ({
+  recommended,
+}) => {
+  return (
+    <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
+      <h1 className="text-2xl">Recommendations</h1>
+      <ul className="flex flex-col">
+        {recommended.map((recommendation, index) => (
+          <li key={index} className="ml-2">
+            <h1 className="text-xl">{recommendation.partOfSpeech}</h1>
+            <ul className="flex flex-col">
+              {recommendation.definitions.map((definition, index) => (
+                <li key={index} className="ml-2">
+                  <span className="ml-2">
+                    {">"} {definition.definition}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
   return (
-    <div className="flex w-7/12 flex-col">
-      <div className="flex flex-row">
-        Word: {word.word} - {word.from} - {word.to}
+    <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
+      <h1 className="text-2xl">Word Showcase</h1>
+      <div className="flex flex-col">
+        <span className="ml-2">Word: {word.word}</span>
+        <span className="ml-2">id: {word.id}</span>
+        <span className="ml-2">userId: {word.userId}</span>
+        <span className="ml-2">Type: {word.type}</span>
       </div>
       <div className="flex flex-col">
-        {word.meanings.map((meaning) => (
-          <div key={meaning.id} className="flex flex-col">
-            {meaning.meaning}
-          </div>
+        <h1 className="text-xl">Meanings</h1>
+        <ul className="flex flex-col">
+          {word.meanings?.map((meaning, index) => (
+            <li key={index} className="ml-2 flex flex-col">
+              <span className="">Meaning: {meaning.meaning}</span>
+              <span className="ml-2">id: {meaning.id}</span>
+              <span className="ml-2">userId: {meaning.userId}</span>
+              <span className="ml-2">wordId: {meaning.wordId}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+const MeaningsShowCase: React.FC<{ meanings: Meaning[] }> = ({ meanings }) => {
+  return (
+    <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
+      <h1 className="text-2xl">Meanings Showcase</h1>
+      <div className="flex flex-col">
+        {meanings.map((meaning, index) => (
+          <li key={index} className="ml-2 flex flex-col">
+            <span className="">Meaning: {meaning.meaning}</span>
+            <span className="ml-2">id: {meaning.id}</span>
+            <span className="ml-2">userId: {meaning.userId}</span>
+            <span className="ml-2">wordId: {meaning.wordId}</span>
+          </li>
         ))}
       </div>
     </div>

@@ -1,26 +1,34 @@
 import { z } from "zod";
 
+export const tagSchema = z.object({
+  id: z.string().optional(),
+  tag: z.string().default("none"),
+  wordId: z.string().optional(),
+  userId: z.string(),
+});
+
 export const meaningSchema = z.object({
   id: z.string().optional(),
-  meaning: z.string(),
+  meaning: z.string().min(2),
   wordId: z.string().optional(),
-  userId: z.string().optional(),
+  userId: z.string(),
 });
 
 export const exampleSchema = z.object({
   id: z.string().optional(),
-  example: z.string(),
+  example: z.string().min(2),
   wordId: z.string().optional(),
-  userId: z.string().optional(),
+  userId: z.string(),
 });
 
 export const wordSchema = z.object({
   id: z.string().optional(),
-  word: z.string(),
-  from: z.string(),
-  to: z.string(),
+  word: z.string().min(2),
+  type: z.string().optional().default("noun"),
+  level: z.number().optional().default(0),
   userId: z.string(),
-  meanings: z.array(meaningSchema),
+  meanings: z.array(meaningSchema).optional(),
+  tags: z.array(tagSchema).optional(),
   examples: z.array(exampleSchema).optional(),
 });
 

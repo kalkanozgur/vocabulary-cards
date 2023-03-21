@@ -2,12 +2,30 @@ import { infiniteWordInputSchema, wordSchema } from "./wordSchema";
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../trpc";
 import {
-  editWord,
+  deleteWord,
   getInfiniteWords,
   getWordById,
   saveWord,
 } from "./wordFunctions";
-import { addMeaningtoWord } from "./meaningFunctions";
+import { translateWithDictionaryapi } from "./recommended";
+
+// #region recommended
+export const getRecommendedWordsProcedure = publicProcedure
+  .input(z.string())
+  .mutation(async ({ input }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    return translateWithDictionaryapi({ word: input });
+  });
+
+// #endregion
+
+// #region crud operations for words
+export const saveWordProcedure = protectedProcedure
+  .input(wordSchema)
+  .mutation(async ({ input, ctx }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    await saveWord({ prisma: ctx.prisma, input, session: ctx.session });
+  });
 
 export const getWordByIdProcedure = publicProcedure
   .input(z.string())
@@ -21,28 +39,11 @@ export const getInfiniteWordsProcedure = publicProcedure
     return getInfiniteWords({ prisma: ctx.prisma, input });
   });
 
-export const saveWordProcedure = protectedProcedure
-  .input(wordSchema)
-  .mutation(async ({ input, ctx }) => {
-    await saveWord({ prisma: ctx.prisma, input, session: ctx.session });
-  });
-
-export const editWordProcedure = protectedProcedure
-  .input(wordSchema)
+export const deleteWordProcedure = protectedProcedure
+  .input(z.string())
   .mutation(async ({ input, ctx }) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    await editWord({ prisma: ctx.prisma, input, session: ctx.session });
+    await deleteWord({ prisma: ctx.prisma, input, session: ctx.session });
   });
 
-export const addMeaningtoWordProcedure = protectedProcedure
-  .input(
-    z.object({
-      wordId: z.string(),
-      id: z.string(),
-      meaning: z.string(),
-    })
-  )
-  .mutation(async ({ input, ctx }) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    await addMeaningtoWord({ prisma: ctx.prisma, input, session: ctx.session });
-  });
+// #endregion

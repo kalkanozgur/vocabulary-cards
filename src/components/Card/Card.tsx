@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { GrConfigure } from "react-icons/gr";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { Word } from "~/server/api/routers/wordSchema";
@@ -32,8 +31,8 @@ const Card: React.FC<Word> = (props: Word) => {
         <div className="relative flex h-full w-full flex-col">
           <>
             {isFlipped ? (
-              <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
-                {props.meanings.map((meaning) => (
+              <div className="absolute flex h-full w-full flex-col items-center justify-center gap-4">
+                {props.meanings?.map((meaning) => (
                   <h1
                     className="text-2xl font-bold text-white"
                     key={meaning.meaning}
@@ -43,7 +42,7 @@ const Card: React.FC<Word> = (props: Word) => {
                 ))}
               </div>
             ) : (
-              <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
+              <div className="absolute flex h-full w-full flex-col items-center justify-center gap-4">
                 <h1 className="relative text-2xl font-bold text-white ">
                   {props.word}
                 </h1>

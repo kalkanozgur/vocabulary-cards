@@ -1,7 +1,132 @@
-import type { InfiniteWordInput, Word } from "./wordSchema";
+import type { InfiniteWordInput, Meaning, Word } from "./wordSchema";
 import type { PrismaClient } from "@prisma/client";
 
 import { type Session } from "next-auth";
+
+export async function saveWord({
+  prisma,
+  input,
+  session,
+}: {
+  prisma: PrismaClient;
+  input: Word;
+  session: Session;
+}) {
+  const { id } = input;
+  if (id) {
+    return editWord({ prisma, input, session });
+  } else {
+    return createWord({ prisma, input, session });
+  }
+}
+
+export async function createWord({
+  prisma,
+  input,
+  session,
+}: {
+  prisma: PrismaClient;
+  input: Word;
+  session: Session;
+}) {
+  const { word, meanings, examples, tags, type } = input;
+  const { id: userId } = session.user;
+  const create = prisma.word.create({
+    data: {
+      word,
+      userId,
+      level: 0,
+      type,
+      // add meanings without a wordId
+      // (wordId will be added when the word is created)
+      meanings: {
+        create: meanings?.map((meaning) => ({
+          userId,
+          meaning: meaning.meaning,
+        })),
+      },
+      examples: {
+        create: examples,
+      },
+      tags: {
+        create: tags,
+      },
+    },
+    include: {
+      meanings: true,
+      examples: true,
+      tags: true,
+    },
+  });
+  return prisma.$transaction([create]);
+}
+
+export async function editWord({
+  prisma,
+  input,
+  session,
+}: {
+  prisma: PrismaClient;
+  input: Word;
+  session: Session;
+}) {
+  const { id, word, meanings, examples, tags, type, level } = input;
+
+  const { id: userId } = session.user;
+
+  // if meanings are provided, delete all existing meanings and create new ones
+  const update = prisma.word.update({
+    where: {
+      id,
+    },
+    include: {
+      meanings: true,
+      examples: true,
+      tags: true,
+    },
+    data: {
+      word,
+      type,
+      level,
+      meanings: {
+        deleteMany: {},
+        create: meanings?.map((meaning) => ({
+          userId,
+          meaning: meaning.meaning,
+        })),
+      },
+      examples: {
+        create: examples,
+      },
+      tags: {
+        create: tags,
+      },
+    },
+  });
+  return prisma.$transaction([update]);
+}
+
+// delete word
+export async function deleteWord({
+  prisma,
+  input,
+}: {
+  prisma: PrismaClient;
+  input: string;
+  session: Session;
+}) {
+  const deleteWord = prisma.word.delete({
+    where: {
+      id: input,
+    },
+    include: {
+      meanings: true,
+      examples: true,
+      tags: true,
+    },
+  });
+  return prisma.$transaction([deleteWord]);
+}
 
 export async function getWordById({
   prisma,
@@ -50,83 +175,4 @@ export async function getInfiniteWords({
     items,
     nextCursor,
   };
-}
-
-export async function saveWord({
-  prisma,
-  input,
-  session,
-}: {
-  prisma: PrismaClient;
-  input: Word;
-  session: Session;
-}) {
-  const { word, from, to, meanings, examples } = input;
-  const { id: userId } = session.user;
-  const save = await prisma.word.create({
-    include: {
-      meanings: true,
-      examples: true,
-    },
-    data: {
-      word,
-      from,
-      to,
-      userId,
-      meanings: {
-        create: meanings.map((meaning) => ({
-          meaning: meaning.meaning,
-          userId,
-        })),
-      },
-      examples: {
-        create: examples?.map((example) => ({
-          example: example.example,
-          userId,
-        })),
-      },
-    },
-  });
-  return save;
-}
-
-export async function editWord({
-  prisma,
-  input,
-  session,
-}: {
-  prisma: PrismaClient;
-  input: Word;
-  session: Session;
-}) {
-  const { id, word, from, to, meanings, examples } = input;
-  const { id: userId } = session.user;
-  const edit = await prisma.word.update({
-    where: {
-      id,
-    },
-    include: {
-      meanings: true,
-      examples: true,
-    },
-    data: {
-      word,
-      from,
-      to,
-      userId,
-      meanings: {
-        create: meanings.map((meaning) => ({
-          meaning: meaning.meaning,
-          userId,
-        })),
-      },
-      examples: {
-        create: examples?.map((example) => ({
-          example: example.example,
-          userId,
-        })),
-      },
-    },
-  });
-  return edit;
 }

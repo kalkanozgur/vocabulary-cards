@@ -12,6 +12,9 @@ import type { Word } from "~/server/api/routers/wordSchema";
 import { createInnerTRPCContext } from "~/server/api/trpc";
 import superjson from "superjson";
 import { useRouter } from "next/router";
+import FlipableWordCard from "~/components/Card/FlipableWordCard";
+import SwipableWordCard from "~/components/Card/SwipableWordCard";
+import { toast } from "react-hot-toast";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
@@ -88,11 +91,16 @@ export default function Home(
           </form>
         </div>
 
-        <section className="grid grid-cols-5 gap-4 md:gap-8">
-          {error ? <h1>{JSON.stringify(error)}</h1> : null}
+        <section className="grid grid-cols-2 gap-5 ">
+          {error &&
+            toast.error(
+              "Something went wrong while fetching the data. Please try again later."
+            )}
           {items
             ? items.map((item) => {
                 return <Card key={item.id} {...item} />;
+                // return <FlipableWordCard key={item.id} {...item} />;
+                // return <SwipableWordCard key={item.id} {...item} />;
               })
             : "Loading..."}
         </section>

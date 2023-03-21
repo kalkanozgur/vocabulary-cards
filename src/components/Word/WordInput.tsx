@@ -1,26 +1,23 @@
 import { useState } from "react";
 import { z } from "zod";
-import { ToggleButton } from "../Buttons/ToggleButton";
 import { FaMicrophone } from "react-icons/fa";
 
 const richWordInputValidator = z.object({
   value: z.string().min(2),
   setValue: z.function().args(z.string()).returns(z.void()),
-  language: z.string().min(2),
-  setLanguage: z.function().args(z.string()).returns(z.void()),
   placeHolder: z.string().optional(),
   onRecord: z.function().args(z.string()).returns(z.void()),
   setRecordedWord: z.function().args(z.string()).returns(z.void()).optional(),
   onChange: z.function().args(z.string()).returns(z.void()).optional(),
+  onBlur: z.function().returns(z.void()).optional(),
 });
 
 type RichWordInputProps = z.infer<typeof richWordInputValidator>;
 
 export const WordInputwithRich: React.FC<RichWordInputProps> = ({
+  onBlur,
   value,
   setValue,
-  language,
-  setLanguage,
   placeHolder,
   onRecord,
   onChange,
@@ -31,6 +28,7 @@ export const WordInputwithRich: React.FC<RichWordInputProps> = ({
     <div className="flex flex-row">
       <div className="relative flex w-full flex-col justify-center">
         <input
+          onBlur={onBlur}
           type="text"
           className=" w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
           placeholder={placeHolder ? placeHolder : "Enter a word"}
@@ -42,22 +40,6 @@ export const WordInputwithRich: React.FC<RichWordInputProps> = ({
             // setTranslation();
           }}
         />
-        <div className="absolute inset-y-0 right-0 z-10 flex items-center">
-          <ToggleButton
-            value={"EN"}
-            selected={language === "EN" ? true : false}
-            onClick={() => {
-              setLanguage("EN");
-            }}
-          />
-          <ToggleButton
-            value={"TR"}
-            selected={language === "TR" ? true : false}
-            onClick={() => {
-              setLanguage("TR");
-            }}
-          />
-        </div>
       </div>
       <button
         tabIndex={-1}

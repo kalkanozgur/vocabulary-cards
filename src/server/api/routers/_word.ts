@@ -1,15 +1,16 @@
 import { createTRPCRouter } from "~/server/api/trpc";
 import {
-  editWordProcedure,
+  deleteWordProcedure,
   getInfiniteWordsProcedure,
+  getRecommendedWordsProcedure,
   getWordByIdProcedure,
   saveWordProcedure,
 } from "./wordProcedures";
 
 export const wordsRouter = createTRPCRouter({
-  // getWordsList publicProcedure with infinite scroll
   getWordByIdProcedure,
   getInfiniteWordsProcedure,
   saveWordProcedure,
-  editWordProcedure,
+  deleteWordProcedure,
+  getRecommendedWordsProcedure,
 });
