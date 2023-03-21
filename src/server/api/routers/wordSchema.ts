@@ -34,7 +34,7 @@ export const wordSchema = z.object({
   type: z.string().optional().default("noun"),
   level: z.number().optional().default(0),
   userId: z.string(),
-  meanings: z.array(meaningSchema).optional(),
+  meanings: z.array(meaningSchema),
   definitions: z.array(definationSchema).optional(),
   tags: z.array(tagSchema).optional(),
   examples: z.array(exampleSchema).optional(),

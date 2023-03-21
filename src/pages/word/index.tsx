@@ -15,8 +15,8 @@ import { createInnerTRPCContext } from "~/server/api/trpc";
 import superjson from "superjson";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
+import type { Recommendations } from "~/server/api/routers/recommended";
 import {
-  Recommendations,
   translateWithDictionaryapi,
   translateWithGoogle,
 } from "~/server/api/routers/recommended";
@@ -96,35 +96,20 @@ export default function WordPage(
     return "";
   });
 
-  const [meanings, setMeanings] = useState<Meaning[]>(() => {
-    if (kelime?.meanings) return kelime.meanings;
-    return [
-      {
-        userId: sessionData?.user.id,
-        meaning: "",
-        wordId: "",
-      } as Meaning,
-    ];
-  });
   const [word, setWord] = useState(() => {
     if (kelime) return kelime;
     return {
       word: input1,
       userId: sessionData?.user.id,
-      meanings: meanings,
+      meanings: [
+        {
+          userId: sessionData?.user.id,
+          meaning: "",
+          wordId: "",
+        } as Meaning,
+      ],
     } as Word;
   });
-
-  const blurForm = () => {
-    setWord({
-      ...word,
-      meanings: meanings,
-    });
-    recommendWord(word.word).catch((e) => {
-      toast.error("Kelime önerilemedi");
-      console.log(e);
-    });
-  };
 
   const saveWord = api.word.saveWordProcedure.useMutation({
     onSuccess: async () => {
@@ -162,7 +147,7 @@ export default function WordPage(
 
   return (
     <>
-      <form className="flex w-7/12 flex-col" onBlur={blurForm}>
+      <form className="flex w-7/12 flex-col">
         <>
           {/* wordType */}
           <div className="flex flex-row space-y-2">
@@ -194,7 +179,7 @@ export default function WordPage(
 
         {/* Meanings */}
         <div className="flex flex-col space-y-2">
-          {meanings.map((meaning, index) => (
+          {word.meanings.map((meaning, index) => (
             <div key={index} className="relative flex">
               <input
                 key={index}
@@ -203,34 +188,48 @@ export default function WordPage(
                 placeholder="Enter words meaning"
                 value={meaning.meaning}
                 onChange={(e) => {
-                  setMeanings(
-                    meanings.map((item, i) => {
+                  setWord({
+                    ...word,
+                    meanings: word.meanings.map((item, i) => {
                       if (i === index) {
                         return { ...item, meaning: e.target.value };
                       }
                       return item;
-                    })
-                  );
+                    }),
+                  });
+                  // setMeanings(
+                  //   meanings.map((item, i) => {
+                  //     if (i === index) {
+                  //       return { ...item, meaning: e.target.value };
+                  //     }
+                  //     return item;
+                  //   })
+                  // );
                 }}
               />
-              {(meanings.length > 1 || meaning.meaning) && (
+              {(meaning.meaning || word.meanings.length > 1) && (
                 <button
                   className="absolute right-0 top-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
                   onClick={(e) => {
                     e.preventDefault();
-                    blurForm();
                     if (meaning.meaning) {
-                      setMeanings(
-                        meanings.map((item, i) => {
+                      setWord({
+                        ...word,
+                        meanings: word.meanings.map((item, i) => {
                           if (i === index) {
                             return { ...item, meaning: "" };
                           }
                           return item;
-                        })
-                      );
+                        }),
+                      });
                     }
-                    if (meanings.length > 1 && !meaning.meaning) {
-                      setMeanings(meanings.filter((item, i) => i !== index));
+                    if (word.meanings.length > 1 && !meaning.meaning) {
+                      setWord({
+                        ...word,
+                        meanings: word.meanings.filter(
+                          (item, i) => i !== index
+                        ),
+                      });
                     }
                   }}
                 >
@@ -247,14 +246,17 @@ export default function WordPage(
           className=" mt-4 w-3/12 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
           type="button"
           onClick={() => {
-            setMeanings([
-              ...meanings,
-              {
-                userId: sessionData?.user.id,
-                meaning: "",
-                wordId: word.id,
-              } as Meaning,
-            ]);
+            setWord({
+              ...word,
+              meanings: [
+                ...word.meanings,
+                {
+                  userId: sessionData?.user.id,
+                  meaning: "",
+                  wordId: word.id,
+                } as Meaning,
+              ],
+            });
           }}
         >
           Add Meaning
@@ -289,23 +291,15 @@ export default function WordPage(
               setWord({
                 ...word,
                 type: type,
-                // meanings: [
-                //   ...meanings,
-                //   {
-                //     userId: sessionData?.user.id,
-                //     meaning: meaningString,
-                //     wordId: word.id,
-                //   } as Meaning,
-                // ],
+                meanings: [
+                  ...word.meanings,
+                  {
+                    userId: sessionData?.user.id,
+                    meaning: meaningString,
+                    wordId: word.id,
+                  } as Meaning,
+                ],
               });
-              setMeanings([
-                ...meanings,
-                {
-                  userId: sessionData?.user.id,
-                  meaning: meaningString,
-                  wordId: word.id,
-                } as Meaning,
-              ]);
             }}
           />
         </div>
@@ -327,10 +321,10 @@ export default function WordPage(
       )}
 
       {/* Showcase */}
-      {word && meanings && sessionData && (
+      {word && word.meanings && sessionData && (
         <div className="flex flex-row space-x-2">
           <WordShowCase word={word} />
-          <MeaningsShowCase meanings={meanings} />
+          <MeaningsShowCase meanings={word.meanings} />
         </div>
       )}
     </>
@@ -342,32 +336,36 @@ const RecommendationsShowCase: React.FC<{
   setValue: (type: string, meaningString: string) => void;
 }> = ({ recommended, setValue }) => {
   return (
-    <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
+    <div className="flex flex-col rounded-lg bg-slate-800 p-2 text-white">
       <h1 className="text-2xl">Recommendations</h1>
       <ul className="flex flex-col">
         {recommended.map((recommendation, index) => (
-          <li key={index} className="ml-2">
-            <h1 className="text-xl">{recommendation.partOfSpeech}</h1>
-            <ul className="flex flex-col space-y-2">
-              {recommendation.definitions.map((definition, index) => (
-                <li key={index} className="ml-2">
-                  <button
-                    className="ml-2 rounded-full bg-teal-500 p-1"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setValue(
-                        recommendation.partOfSpeech,
-                        definition.definition
-                      );
-                    }}
-                  >
-                    {"+"}
-                  </button>
-                  <span className="ml-2">{definition.definition}</span>
-                </li>
-              ))}
-            </ul>
-          </li>
+          <>
+            <li key={index} className="ml-2">
+              <h1 className="text-xl">{recommendation.partOfSpeech}</h1>
+              <ul className="flex flex-col space-y-2">
+                {recommendation.definitions.map((definition, index) => (
+                  <li key={index} className="ml-2">
+                    <button
+                      className="ml-2 rounded-full bg-teal-500 p-1"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setValue(
+                          recommendation.partOfSpeech,
+                          definition.definition
+                        );
+                      }}
+                    >
+                      {"+"}
+                    </button>
+                    <span className="ml-2">{definition.definition}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+
+            <div className="w-full border-t border-gray-700"></div>
+          </>
         ))}
       </ul>
     </div>
