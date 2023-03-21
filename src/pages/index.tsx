@@ -91,18 +91,17 @@ export default function Home(
           </form>
         </div>
 
-        <section className="grid grid-cols-2 gap-5 ">
+        <section className="md:grid-col-4 grid gap-5 sm:grid-cols-4">
           {error &&
             toast.error(
               "Something went wrong while fetching the data. Please try again later."
             )}
           {items
             ? items.map((item) => {
+                toast.dismiss();
                 return <Card key={item.id} {...item} />;
-                // return <FlipableWordCard key={item.id} {...item} />;
-                // return <SwipableWordCard key={item.id} {...item} />;
               })
-            : "Loading..."}
+            : toast.loading("Loading...")}
         </section>
       </>
     </>

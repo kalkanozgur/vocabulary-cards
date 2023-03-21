@@ -1,4 +1,4 @@
-import type { InfiniteWordInput, Meaning, Word } from "./wordSchema";
+import type { InfiniteWordInput, Word } from "./wordSchema";
 import type { PrismaClient } from "@prisma/client";
 
 import { type Session } from "next-auth";
@@ -29,7 +29,7 @@ export async function createWord({
   input: Word;
   session: Session;
 }) {
-  const { word, meanings, examples, tags, type } = input;
+  const { word, meanings, examples, tags, definitions, type } = input;
   const { id: userId } = session.user;
   const create = prisma.word.create({
     data: {
@@ -106,7 +106,6 @@ export async function editWord({
   return prisma.$transaction([update]);
 }
 
-// delete word
 export async function deleteWord({
   prisma,
   input,

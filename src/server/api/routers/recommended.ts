@@ -28,8 +28,6 @@ export const translateWithDictionaryapi = async ({
 }: {
   word: string;
 }) => {
-  console.log("word", word);
-
   const recommendsList = await fetch(
     `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
   ).then((res) => res.json());
@@ -39,7 +37,35 @@ export const translateWithDictionaryapi = async ({
       return meaning;
     }
   );
-  console.log("recommends", recommends);
 
   return recommends;
+};
+
+export const translateWithGoogle = async ({ word }: { word: string }) => {
+  const translate = await fetch(
+    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=en&dt=t&q=${word}`
+  )
+    .then((res) => res.json())
+    .then((res) => res.flat(2));
+
+  return translate;
+};
+
+export const translateWithAzure = async ({ word }: { word: string }) => {
+  const translate = await fetch(
+    `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=en&to=tr&to=de&to=fr&to=es&to=it&to=ja&to=ko&to=nl&to=pt&to=ru&to=zh-Hans&to=zh-Hant`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Ocp-Apim-Subscription-Key": "b0a5b5c2d8e74e5c9e9c1c1a8b8a5b0d",
+        "Ocp-Apim-Subscription-Region": "westeurope",
+      },
+      body: JSON.stringify([{ Text: word }]),
+    }
+  )
+    .then((res) => res.json())
+    .then((res) => res[0].translations);
+
+  return translate;
 };

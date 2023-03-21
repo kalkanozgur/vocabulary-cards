@@ -1,36 +1,43 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  // NOTE: When using postgresql, mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-  // Further reading:
-  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  // If you use Prisma Migrate, specify a URL for the Prisma shadow database
+  // https://neon.tech/docs/guides/prisma/#configure-a-shadow-database-for-prisma-migrate
+  shadowDatabaseUrl = env("DATABASE_URL")
 }
 
 // Models for Word Dictionary
 model Word {
-  id        String    @id @default(cuid())
-  word      String    @unique
-  type      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  userId    String
-  level     Int
-  meanings  Meaning[]
-  examples  Example[]
-  tags      Tag[]
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  word        String       @unique
+  type        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      String
+  level       Int
+  meanings    Meaning[]
+  definations Defination[]
+  examples    Example[]
+  tags        Tag[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// one word can have multiple tags
-// one tag can be used for multiple words
+model Defination {
+  id        String   @id @default(cuid())
+  def       String
+  userId    String
+  wordId    String
+  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Tag {
   id        String   @id @default(cuid())
   tag       String   @unique
@@ -91,9 +98,9 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?      @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
@@ -101,6 +108,7 @@ model User {
   words         Word[]
   meanings      Meaning[]
   examples      Example[]
+  definations   Defination[]
   tags          Tag[]
 }
 

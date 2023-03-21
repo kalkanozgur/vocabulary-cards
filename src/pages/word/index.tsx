@@ -18,7 +18,10 @@ import toast from "react-hot-toast";
 import {
   Recommendations,
   translateWithDictionaryapi,
+  translateWithGoogle,
 } from "~/server/api/routers/recommended";
+
+// #region ssr
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
@@ -44,15 +47,16 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     props: { trpcState: ssg.dehydrate() },
   };
 };
+// #endregion
 
 export default function WordPage(
   props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) {
+  // #region functions
   let kelime: Word;
   if (props.trpcState) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     kelime = props.trpcState.json.queries[0].state.data;
-    console.log("kelime", kelime);
   }
 
   const router = useRouter();
@@ -60,17 +64,38 @@ export default function WordPage(
 
   const { data: sessionData } = useSession();
 
+  const [recommended, setRecommended] = useState<Recommendations[]>();
+  const recommendWord = async (input: string) => {
+    const res = await translateWithDictionaryapi({ word: input });
+    setRecommended(res);
+  };
+
+  const [translation, setTranslation] = useState();
+  const translateWithYandex = async (input: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const res = await translateWithGoogle({ word: input });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    setTranslation(res);
+  };
+
   const [input1, setInput1] = useState(() => {
-    if (text) return text as string;
-    if (kelime) return kelime.word;
+    if (text) {
+      sessionData &&
+        recommendWord(text as string).catch(() => {
+          toast.error("Kelime önerilemedi");
+        });
+      return text as string;
+    }
+    if (kelime) {
+      sessionData &&
+        recommendWord(kelime.word).catch(() => {
+          toast.error("Kelime önerilemedi");
+        });
+      return kelime.word;
+    }
     return "";
   });
 
-  const [recommended, setRecommended] = useState<Recommendations[]>();
-  // const [input2, setInput2] = useState(() => {
-  //   if (kelime) return kelime.meanings[0]?.meaning as string;
-  //   return "";
-  // });
   const [meanings, setMeanings] = useState<Meaning[]>(() => {
     if (kelime?.meanings) return kelime.meanings;
     return [
@@ -131,18 +156,21 @@ export default function WordPage(
     },
   });
 
-  const recommendWord = async (input: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const res = await translateWithDictionaryapi({ word: input });
-    setRecommended(res);
-  };
-
   saveWord.isLoading && toast.loading("Kelime kaydediliyor");
   deleteWord.isLoading && toast.loading("Kelime siliniyor");
+  // #endregion
 
   return (
     <>
       <form className="flex w-7/12 flex-col" onBlur={blurForm}>
+        <>
+          {/* wordType */}
+          <div className="flex flex-row space-y-2">
+            <div className="rounded-md bg-slate-500 p-3">
+              <span className="text-white">{word.type}</span>
+            </div>
+          </div>
+        </>
         <WordInputwithRich
           value={input1}
           setValue={setInput1}
@@ -153,6 +181,10 @@ export default function WordPage(
             setWord({ ...word, word: value });
           }}
           onBlur={() => {
+            translateWithYandex(word.word).catch((e) => {
+              toast.error("Kelime çevirisi yapılamadı");
+              console.log(e);
+            });
             recommendWord(word.word).catch((e) => {
               toast.error("Kelime önerilemedi");
               console.log(e);
@@ -186,6 +218,7 @@ export default function WordPage(
                   className="absolute right-0 top-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
                   onClick={(e) => {
                     e.preventDefault();
+                    blurForm();
                     if (meaning.meaning) {
                       setMeanings(
                         meanings.map((item, i) => {
@@ -198,7 +231,6 @@ export default function WordPage(
                     }
                     if (meanings.length > 1 && !meaning.meaning) {
                       setMeanings(meanings.filter((item, i) => i !== index));
-                      blurForm();
                     }
                   }}
                 >
@@ -220,7 +252,7 @@ export default function WordPage(
               {
                 userId: sessionData?.user.id,
                 meaning: "",
-                wordId: "",
+                wordId: word.id,
               } as Meaning,
             ]);
           }}
@@ -241,9 +273,41 @@ export default function WordPage(
         Submit
       </button>
 
+      {/* Translation */}
+      {translation && (
+        <div className="flex flex-row space-x-2">
+          {JSON.stringify(translation)}
+        </div>
+      )}
+
+      {/* Recommendations */}
       {recommended && (
         <div className="flex flex-row space-x-2">
-          <RecommendationsShowCase recommended={recommended} />
+          <RecommendationsShowCase
+            recommended={recommended}
+            setValue={(type, meaningString) => {
+              setWord({
+                ...word,
+                type: type,
+                // meanings: [
+                //   ...meanings,
+                //   {
+                //     userId: sessionData?.user.id,
+                //     meaning: meaningString,
+                //     wordId: word.id,
+                //   } as Meaning,
+                // ],
+              });
+              setMeanings([
+                ...meanings,
+                {
+                  userId: sessionData?.user.id,
+                  meaning: meaningString,
+                  wordId: word.id,
+                } as Meaning,
+              ]);
+            }}
+          />
         </div>
       )}
 
@@ -273,9 +337,10 @@ export default function WordPage(
   );
 }
 
-const RecommendationsShowCase: React.FC<{ recommended: Recommendations[] }> = ({
-  recommended,
-}) => {
+const RecommendationsShowCase: React.FC<{
+  recommended: Recommendations[];
+  setValue: (type: string, meaningString: string) => void;
+}> = ({ recommended, setValue }) => {
   return (
     <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
       <h1 className="text-2xl">Recommendations</h1>
@@ -283,12 +348,22 @@ const RecommendationsShowCase: React.FC<{ recommended: Recommendations[] }> = ({
         {recommended.map((recommendation, index) => (
           <li key={index} className="ml-2">
             <h1 className="text-xl">{recommendation.partOfSpeech}</h1>
-            <ul className="flex flex-col">
+            <ul className="flex flex-col space-y-2">
               {recommendation.definitions.map((definition, index) => (
                 <li key={index} className="ml-2">
-                  <span className="ml-2">
-                    {">"} {definition.definition}
-                  </span>
+                  <button
+                    className="ml-2 rounded-full bg-teal-500 p-1"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setValue(
+                        recommendation.partOfSpeech,
+                        definition.definition
+                      );
+                    }}
+                  >
+                    {"+"}
+                  </button>
+                  <span className="ml-2">{definition.definition}</span>
                 </li>
               ))}
             </ul>
@@ -299,6 +374,7 @@ const RecommendationsShowCase: React.FC<{ recommended: Recommendations[] }> = ({
   );
 };
 
+// #region WordShowCase & MeaningsShowCase
 const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
   return (
     <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
@@ -343,3 +419,4 @@ const MeaningsShowCase: React.FC<{ meanings: Meaning[] }> = ({ meanings }) => {
     </div>
   );
 };
+// #endregion

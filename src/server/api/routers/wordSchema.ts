@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const definationSchema = z.object({
+  id: z.string().optional(),
+  def: z.string().min(2),
+  wordId: z.string().optional(),
+  userId: z.string(),
+});
+
 export const tagSchema = z.object({
   id: z.string().optional(),
   tag: z.string().default("none"),
@@ -28,6 +35,7 @@ export const wordSchema = z.object({
   level: z.number().optional().default(0),
   userId: z.string(),
   meanings: z.array(meaningSchema).optional(),
+  definitions: z.array(definationSchema).optional(),
   tags: z.array(tagSchema).optional(),
   examples: z.array(exampleSchema).optional(),
 });
