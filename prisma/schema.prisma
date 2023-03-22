@@ -15,27 +15,14 @@ datasource db {
 model Word {
   id          String       @id @default(cuid())
   word        String       @unique
-  type        String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   userId      String
   level       Int
   meanings    Meaning[]
-  definations Defination[]
-  examples    Example[]
+  definitions Definition[]
   tags        Tag[]
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Defination {
-  id        String   @id @default(cuid())
-  def       String
-  userId    String
-  wordId    String
-  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Tag {
@@ -48,15 +35,28 @@ model Tag {
   words     Word[]
 }
 
-model Example {
-  id        String   @id @default(cuid())
-  example   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  wordId    String
+model Definition {
+  id        String    @id @default(cuid())
+  def       String
+  type      String
   userId    String
-  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId    String
+  word      Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  examples  Example[]
+}
+
+model Example {
+  id        String     @id @default(cuid())
+  example   String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  defId     String
+  def       Definition @relation(fields: [defId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Meaning {
@@ -108,7 +108,7 @@ model User {
   words         Word[]
   meanings      Meaning[]
   examples      Example[]
-  definations   Defination[]
+  definitions   Definition[]
   tags          Tag[]
 }
 

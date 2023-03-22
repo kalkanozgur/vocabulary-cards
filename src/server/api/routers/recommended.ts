@@ -43,12 +43,24 @@ export const translateWithDictionaryapi = async ({
 
 export const translateWithGoogle = async ({ word }: { word: string }) => {
   const translate = await fetch(
-    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=en&dt=t&q=${word}`
+    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t&q=${word}`
   )
     .then((res) => res.json())
     .then((res) => res.flat(2));
 
-  return translate;
+  // remove null, undefined, empty, "en", "tr", input word and numbers from array
+  const filtered: string[] = translate.filter(
+    (item: string) =>
+      item !== null &&
+      item !== undefined &&
+      item !== "" &&
+      item !== "en" &&
+      item !== "tr" &&
+      item !== word &&
+      !Number(item)
+  );
+
+  return filtered;
 };
 
 export const translateWithAzure = async ({ word }: { word: string }) => {

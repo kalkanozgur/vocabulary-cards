@@ -13,6 +13,8 @@ export async function saveWord({
   session: Session;
 }) {
   const { id } = input;
+  console.log("input", input);
+
   if (id) {
     return editWord({ prisma, input, session });
   } else {
@@ -29,24 +31,26 @@ export async function createWord({
   input: Word;
   session: Session;
 }) {
-  const { word, meanings, examples, tags, definitions, type } = input;
+  const { word, meanings, tags, definitions } = input;
   const { id: userId } = session.user;
+
   const create = prisma.word.create({
     data: {
       word,
       userId,
       level: 0,
-      type,
-      // add meanings without a wordId
-      // (wordId will be added when the word is created)
+      definitions: {
+        create: definitions?.map((defination) => ({
+          userId,
+          type: defination.type,
+          def: defination.def,
+        })),
+      },
       meanings: {
         create: meanings?.map((meaning) => ({
           userId,
           meaning: meaning.meaning,
         })),
-      },
-      examples: {
-        create: examples,
       },
       tags: {
         create: tags,
@@ -54,8 +58,8 @@ export async function createWord({
     },
     include: {
       meanings: true,
-      examples: true,
       tags: true,
+      definitions: true,
     },
   });
   return prisma.$transaction([create]);
@@ -70,7 +74,7 @@ export async function editWord({
   input: Word;
   session: Session;
 }) {
-  const { id, word, meanings, examples, tags, type, level } = input;
+  const { id, word, meanings, definitions, tags, level } = input;
 
   const { id: userId } = session.user;
 
@@ -81,12 +85,11 @@ export async function editWord({
     },
     include: {
       meanings: true,
-      examples: true,
+      definitions: true,
       tags: true,
     },
     data: {
       word,
-      type,
       level,
       meanings: {
         deleteMany: {},
@@ -95,10 +98,16 @@ export async function editWord({
           meaning: meaning.meaning,
         })),
       },
-      examples: {
-        create: examples,
+      definitions: {
+        deleteMany: {},
+        create: definitions?.map((defination) => ({
+          userId,
+          type: defination.type,
+          def: defination.def,
+        })),
       },
       tags: {
+        deleteMany: {},
         create: tags,
       },
     },
@@ -120,7 +129,7 @@ export async function deleteWord({
     },
     include: {
       meanings: true,
-      examples: true,
+      definitions: true,
       tags: true,
     },
   });
@@ -139,8 +148,9 @@ export async function getWordById({
       id: input,
     },
     include: {
+      tags: true,
       meanings: true,
-      examples: true,
+      definitions: true,
     },
   });
 }
@@ -162,7 +172,8 @@ export async function getInfiniteWords({
     },
     include: {
       meanings: true,
-      examples: false,
+      definitions: true,
+      tags: true,
     },
   });
   let nextCursor: typeof cursor | undefined = undefined;

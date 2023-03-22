@@ -4,11 +4,20 @@ import type {
   InferGetServerSidePropsType,
 } from "next/types";
 import { useState } from "react";
-import { WordInputwithRich } from "~/components/Word/WordInput";
+import {
+  TagInput,
+  WordInputWithCancel,
+  WordInputwithRich,
+} from "~/components/Word/WordInput";
 
 import { api } from "~/utils/api";
 import { createProxySSGHelpers } from "@trpc/react-query/ssg";
-import type { Meaning, Word } from "~/server/api/routers/wordSchema";
+import type {
+  Definition,
+  Meaning,
+  Tag,
+  Word,
+} from "~/server/api/routers/wordSchema";
 import { appRouter } from "~/server/api/root";
 
 import { createInnerTRPCContext } from "~/server/api/trpc";
@@ -64,14 +73,11 @@ export default function WordPage(
 
   const { data: sessionData } = useSession();
 
+  const [translation, setTranslation] = useState<string[]>();
   const [recommended, setRecommended] = useState<Recommendations[]>();
   const recommendWord = async (input: string) => {
-    const res = await translateWithDictionaryapi({ word: input });
-    setRecommended(res);
-  };
-
-  const [translation, setTranslation] = useState();
-  const translateWithYandex = async (input: string) => {
+    const res1 = await translateWithDictionaryapi({ word: input });
+    setRecommended(res1);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const res = await translateWithGoogle({ word: input });
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -107,6 +113,19 @@ export default function WordPage(
           meaning: "",
           wordId: "",
         } as Meaning,
+      ],
+      definitions: [
+        {
+          userId: sessionData?.user.id,
+          def: "",
+          wordId: "",
+        } as Definition,
+      ],
+      tags: [
+        {
+          userId: sessionData?.user.id,
+          tag: "default",
+        } as Tag,
       ],
     } as Word;
   });
@@ -147,15 +166,7 @@ export default function WordPage(
 
   return (
     <>
-      <form className="flex w-7/12 flex-col">
-        <>
-          {/* wordType */}
-          <div className="flex flex-row space-y-2">
-            <div className="rounded-md bg-slate-500 p-3">
-              <span className="text-white">{word.type}</span>
-            </div>
-          </div>
-        </>
+      <form className="flex w-7/12 flex-col space-y-2">
         <WordInputwithRich
           value={input1}
           setValue={setInput1}
@@ -166,101 +177,157 @@ export default function WordPage(
             setWord({ ...word, word: value });
           }}
           onBlur={() => {
-            translateWithYandex(word.word).catch((e) => {
-              toast.error("Kelime çevirisi yapılamadı");
-              console.log(e);
-            });
             recommendWord(word.word).catch((e) => {
               toast.error("Kelime önerilemedi");
               console.log(e);
             });
           }}
         />
-
         {/* Meanings */}
-        <div className="flex flex-col space-y-2">
-          {word.meanings.map((meaning, index) => (
-            <div key={index} className="relative flex">
-              <input
+        <div className="flex flex-col space-y-2 p-2">
+          <h1 className="text-2xl font-bold">Meanings</h1>
+          {word.meanings &&
+            word.meanings.map((meaning, index) => (
+              <WordInputWithCancel
                 key={index}
-                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
-                type="text"
-                placeholder="Enter words meaning"
                 value={meaning.meaning}
-                onChange={(e) => {
+                onChange={(value) => {
                   setWord({
                     ...word,
-                    meanings: word.meanings.map((item, i) => {
+                    meanings: word.meanings.map((m, i) =>
+                      i === index ? { ...m, meaning: value } : m
+                    ),
+                  });
+                }}
+                removeInput={() => {
+                  setWord({
+                    ...word,
+                    meanings: word.meanings.filter((_, i) => i !== index),
+                  });
+                }}
+                setValue={(value) => {
+                  setWord({
+                    ...word,
+                    meanings: word.meanings.map((m, i) =>
+                      i === index ? { ...m, meaning: value } : m
+                    ),
+                  });
+                }}
+                valuesArray={word.meanings}
+                index={index}
+              />
+            ))}
+          <button
+            className=" mt-4 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100 lg:w-3/12"
+            type="button"
+            onClick={() => {
+              setWord({
+                ...word,
+                meanings: [
+                  ...word.meanings,
+                  {
+                    userId: sessionData?.user.id,
+                    meaning: "",
+                  } as Meaning,
+                ],
+              });
+            }}
+          >
+            Add Meaning
+          </button>
+          <br />
+        </div>
+
+        {/* Definitions */}
+        <div className="flex flex-col space-y-2 p-2">
+          <h1 className="text-2xl font-bold">Definitions</h1>
+          {word.definitions &&
+            word.definitions.map((def, index) => (
+              <>
+                <WordInputWithCancel
+                  value={def.def}
+                  setValue={(value) => {
+                    setWord({
+                      ...word,
+                      definitions: word.definitions.map((item, i) => {
+                        if (i === index) {
+                          return { ...item, def: value };
+                        }
+                        return item;
+                      }),
+                    });
+                  }}
+                  valuesArray={word.definitions}
+                  index={index}
+                  removeInput={() => {
+                    setWord({
+                      ...word,
+                      definitions: word.definitions.filter(
+                        (item, i) => i !== index
+                      ),
+                    });
+                  }}
+                />
+                <span className="text-base font-bold">{def.type}</span>
+              </>
+            ))}
+          <button
+            className=" mt-4 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100 lg:w-3/12"
+            type="button"
+            onClick={() => {
+              if (word.definitions) {
+                setWord({
+                  ...word,
+                  definitions: [
+                    ...word.definitions,
+                    {
+                      userId: sessionData?.user.id,
+                      def: "",
+                    } as Definition,
+                  ],
+                });
+              } else {
+                setWord({
+                  ...word,
+                  definitions: [
+                    {
+                      userId: sessionData?.user.id,
+                      def: "",
+                    } as Definition,
+                  ],
+                });
+              }
+            }}
+          >
+            Add Definition
+          </button>
+          <br />
+        </div>
+
+        {/* Tags */}
+        {word.tags && (
+          <div className="flex flex-col space-y-2 p-2">
+            <h1 className="text-2xl font-bold">Tags</h1>
+            {word.tags.map((tag, index) => (
+              <TagInput
+                value={tag.tag}
+                setValue={(value) => {
+                  setWord({
+                    ...word,
+                    tags: word.tags.map((item, i) => {
                       if (i === index) {
-                        return { ...item, meaning: e.target.value };
+                        return { ...item, tag: value };
                       }
                       return item;
                     }),
                   });
-                  // setMeanings(
-                  //   meanings.map((item, i) => {
-                  //     if (i === index) {
-                  //       return { ...item, meaning: e.target.value };
-                  //     }
-                  //     return item;
-                  //   })
-                  // );
                 }}
+                key={index}
               />
-              {(meaning.meaning || word.meanings.length > 1) && (
-                <button
-                  className="absolute right-0 top-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (meaning.meaning) {
-                      setWord({
-                        ...word,
-                        meanings: word.meanings.map((item, i) => {
-                          if (i === index) {
-                            return { ...item, meaning: "" };
-                          }
-                          return item;
-                        }),
-                      });
-                    }
-                    if (word.meanings.length > 1 && !meaning.meaning) {
-                      setWord({
-                        ...word,
-                        meanings: word.meanings.filter(
-                          (item, i) => i !== index
-                        ),
-                      });
-                    }
-                  }}
-                >
-                  X
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/*
-        {/* Add Meaning */}
-        <button
-          className=" mt-4 w-3/12 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
-          type="button"
-          onClick={() => {
-            setWord({
-              ...word,
-              meanings: [
-                ...word.meanings,
-                {
-                  userId: sessionData?.user.id,
-                  meaning: "",
-                  wordId: word.id,
-                } as Meaning,
-              ],
-            });
-          }}
-        >
-          Add Meaning
-        </button>
+            ))}
+            <br />
+          </div>
+        )}
       </form>
 
       {/* Save Word Button */}
@@ -278,7 +345,26 @@ export default function WordPage(
       {/* Translation */}
       {translation && (
         <div className="flex flex-row space-x-2">
-          {JSON.stringify(translation)}
+          {translation.map((t, index) => (
+            <button
+              key={index}
+              className="rounded-lg bg-slate-800 p-2"
+              onClick={() => {
+                setWord({
+                  ...word,
+                  meanings: [
+                    ...word.meanings,
+                    {
+                      userId: sessionData?.user.id,
+                      meaning: t,
+                    } as Meaning,
+                  ],
+                });
+              }}
+            >
+              <h1 className="text-2xl font-bold">{t}</h1>
+            </button>
+          ))}
         </div>
       )}
 
@@ -288,18 +374,30 @@ export default function WordPage(
           <RecommendationsShowCase
             recommended={recommended}
             setValue={(type, meaningString) => {
-              setWord({
-                ...word,
-                type: type,
-                meanings: [
-                  ...word.meanings,
-                  {
-                    userId: sessionData?.user.id,
-                    meaning: meaningString,
-                    wordId: word.id,
-                  } as Meaning,
-                ],
-              });
+              if (word.definitions) {
+                setWord({
+                  ...word,
+                  definitions: [
+                    ...word.definitions,
+                    {
+                      userId: sessionData?.user.id,
+                      def: meaningString,
+                      type: type,
+                    } as Definition,
+                  ],
+                });
+              } else {
+                setWord({
+                  ...word,
+                  definitions: [
+                    {
+                      userId: sessionData?.user.id,
+                      def: meaningString,
+                      type: type,
+                    } as Definition,
+                  ],
+                });
+              }
             }}
           />
         </div>
@@ -309,7 +407,7 @@ export default function WordPage(
       {word.id && (
         <button
           // delete Word Button with tailwindcss absolute possition on top right
-          className="absolute right-0 bottom-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
+          className="absolute right-1/2 bottom-0 mt-2 mr-2 translate-x-1/2 rounded-full bg-red-500 p-2 px-4"
           type="submit"
           onClick={(e) => {
             e.preventDefault();
@@ -321,12 +419,7 @@ export default function WordPage(
       )}
 
       {/* Showcase */}
-      {word && word.meanings && sessionData && (
-        <div className="flex flex-row space-x-2">
-          <WordShowCase word={word} />
-          <MeaningsShowCase meanings={word.meanings} />
-        </div>
-      )}
+      {word && word.meanings && sessionData && <WordShowCase word={word} />}
     </>
   );
 }
@@ -381,7 +474,6 @@ const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
         <span className="ml-2">Word: {word.word}</span>
         <span className="ml-2">id: {word.id}</span>
         <span className="ml-2">userId: {word.userId}</span>
-        <span className="ml-2">Type: {word.type}</span>
       </div>
       <div className="flex flex-col">
         <h1 className="text-xl">Meanings</h1>
@@ -390,8 +482,28 @@ const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
             <li key={index} className="ml-2 flex flex-col">
               <span className="">Meaning: {meaning.meaning}</span>
               <span className="ml-2">id: {meaning.id}</span>
-              <span className="ml-2">userId: {meaning.userId}</span>
-              <span className="ml-2">wordId: {meaning.wordId}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="w-full border-t border-gray-700"></div>
+        <h1 className="text-xl">Definitions</h1>
+        <ul className="flex flex-col">
+          {word.definitions?.map((definition, index) => (
+            <li key={index} className="ml-2 flex flex-col">
+              <span className="">Definition: {definition.def}</span>
+              <span className="ml-2">id: {definition.id}</span>
+              <span className="ml-2">def: {definition.def}</span>
+              <span className="ml-2">type: {definition.type}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="w-full border-t border-gray-700"></div>
+        <h1 className="text-xl">Tags</h1>
+        <ul className="flex flex-col">
+          {word.tags?.map((tag, index) => (
+            <li key={index} className="ml-2 flex flex-col">
+              <span className="">Tag: {tag.tag}</span>
+              <span className="ml-2">id: {tag.id}</span>
             </li>
           ))}
         </ul>
@@ -400,21 +512,56 @@ const WordShowCase: React.FC<{ word: Word }> = ({ word }) => {
   );
 };
 
-const MeaningsShowCase: React.FC<{ meanings: Meaning[] }> = ({ meanings }) => {
-  return (
-    <div className="flex w-9/12 flex-col rounded-lg bg-slate-800 p-2 text-white">
-      <h1 className="text-2xl">Meanings Showcase</h1>
-      <div className="flex flex-col">
-        {meanings.map((meaning, index) => (
-          <li key={index} className="ml-2 flex flex-col">
-            <span className="">Meaning: {meaning.meaning}</span>
-            <span className="ml-2">id: {meaning.id}</span>
-            <span className="ml-2">userId: {meaning.userId}</span>
-            <span className="ml-2">wordId: {meaning.wordId}</span>
-          </li>
-        ))}
-      </div>
-    </div>
-  );
-};
 // #endregion
+
+const asd = `<div key={index} className="relative flex">
+                  <div className="relative flex w-full">
+                    <input
+                      key={index}
+                      className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-lg text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"
+                      type="text"
+                      placeholder="Enter words definition"
+                      value={def.def}
+                      onChange={(e) => {
+                        setWord({
+                          ...word,
+                          definitions: word.definitions.map((item, i) => {
+                            if (i === index) {
+                              return { ...item, def: e.target.value };
+                            }
+                            return item;
+                          }),
+                        });
+                      }}
+                    />
+                    <button
+                      className="absolute right-0 top-0 mt-2 mr-2 rounded-full bg-red-500 p-1 px-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (def.def) {
+                          setWord({
+                            ...word,
+                            definitions: word.definitions.map((item, i) => {
+                              if (i === index) {
+                                return { ...item, def: "" };
+                              }
+                              return item;
+                            }),
+                          });
+                        } else if (!def.def) {
+                          setWord({
+                            ...word,
+                            definitions: word.definitions.filter(
+                              (item, i) => i !== index
+                            ),
+                          });
+                        }
+                      }}
+                    >
+                      X
+                    </button>
+                  </div>{" "}
+                  <div className="space-x-5 rounded-md bg-slate-400 p-2">
+                    {def.type ? def.type : "noun"}
+                  </div>
+                </div>`;

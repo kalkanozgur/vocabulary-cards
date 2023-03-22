@@ -12,8 +12,6 @@ import type { Word } from "~/server/api/routers/wordSchema";
 import { createInnerTRPCContext } from "~/server/api/trpc";
 import superjson from "superjson";
 import { useRouter } from "next/router";
-import FlipableWordCard from "~/components/Card/FlipableWordCard";
-import SwipableWordCard from "~/components/Card/SwipableWordCard";
 import { toast } from "react-hot-toast";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
