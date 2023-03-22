@@ -53,7 +53,10 @@ export async function createWord({
         })),
       },
       tags: {
-        create: tags,
+        create: tags.map((tag) => ({
+          tag: tag.tag,
+          userId: userId,
+        })),
       },
     },
     include: {
