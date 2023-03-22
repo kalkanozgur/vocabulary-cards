@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { z } from "zod";
 import { FaMicrophone } from "react-icons/fa";
-import { Word } from "~/server/api/routers/wordSchema";
 
 const richWordInputValidator = z.object({
   value: z.string().min(2),

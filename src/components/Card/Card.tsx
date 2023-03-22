@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { Word } from "~/server/api/routers/wordSchema";
 import { GrConfigure } from "react-icons/gr";
@@ -48,9 +47,6 @@ const frontside: React.FC<Word> = (props: Word) => {
     <>
       <div className="absolute flex h-full w-full flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-bold text-white ">{props.word}</h1>
-        <span className="absolute bottom-2 right-2 text-2xl font-bold text-white ">
-          {props.type}
-        </span>
       </div>
     </>
   );
