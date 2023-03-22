@@ -8,7 +8,7 @@ datasource db {
   url               = env("DATABASE_URL")
   // If you use Prisma Migrate, specify a URL for the Prisma shadow database
   // https://neon.tech/docs/guides/prisma/#configure-a-shadow-database-for-prisma-migrate
-  shadowDatabaseUrl = env("DATABASE_URL")
+  // shadowDatabaseUrl = env("DATABASE_URL")
 }
 
 // Models for Word Dictionary
