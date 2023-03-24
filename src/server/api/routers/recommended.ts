@@ -58,7 +58,6 @@ export const translateWithGoogle = async ({ word }: { word: string }) => {
       item !== "en" &&
       item !== "tr" &&
       item !== word &&
-      item.length > 15 &&
       !Number(item)
   );
 

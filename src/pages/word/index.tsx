@@ -217,6 +217,36 @@ export default function WordPage(
                 index={index}
               />
             ))}
+          {/* Translation */}
+          {translation && (
+            <div className="flex flex-row space-x-2 overflow-scroll overflow-x-auto">
+              {translation.map((t, index) => (
+                <button
+                  key={index}
+                  className="rounded-lg bg-slate-800 p-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.scrollTo({
+                      top: 0,
+                      behavior: "smooth",
+                    });
+                    setWord({
+                      ...word,
+                      meanings: [
+                        ...word.meanings,
+                        {
+                          userId: sessionData?.user.id,
+                          meaning: t,
+                        } as Meaning,
+                      ],
+                    });
+                  }}
+                >
+                  <h1 className="text-2xl font-bold">{t}</h1>
+                </button>
+              ))}
+            </div>
+          )}
           <button
             className=" mt-4 rounded-md border border-teal-300 bg-teal-300 px-2 py-2 text-base text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100 lg:w-3/12"
             type="button"
@@ -342,32 +372,6 @@ export default function WordPage(
         Submit
       </button>
 
-      {/* Translation */}
-      {translation && (
-        <div className="flex w-full flex-row space-x-2 overflow-scroll overflow-x-auto">
-          {translation.map((t, index) => (
-            <button
-              key={index}
-              className="rounded-lg bg-slate-800 p-2"
-              onClick={() => {
-                setWord({
-                  ...word,
-                  meanings: [
-                    ...word.meanings,
-                    {
-                      userId: sessionData?.user.id,
-                      meaning: t,
-                    } as Meaning,
-                  ],
-                });
-              }}
-            >
-              <h1 className="text-2xl font-bold">{t}</h1>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Recommendations */}
       {recommended && (
         <div className="flex flex-row space-x-2">
@@ -375,6 +379,10 @@ export default function WordPage(
             recommended={recommended}
             setValue={(type, meaningString) => {
               if (word.definitions) {
+                window.scrollTo({
+                  top: 0,
+                  behavior: "smooth",
+                });
                 setWord({
                   ...word,
                   definitions: [
