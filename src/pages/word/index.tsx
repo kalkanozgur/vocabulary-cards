@@ -344,7 +344,7 @@ export default function WordPage(
 
       {/* Translation */}
       {translation && (
-        <div className="flex flex-row space-x-2">
+        <div className="flex w-full flex-row space-x-2 overflow-scroll overflow-x-auto">
           {translation.map((t, index) => (
             <button
               key={index}
